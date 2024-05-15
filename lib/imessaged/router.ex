@@ -17,18 +17,18 @@ defmodule Imessaged.Router do
     send_resp(conn, 200, "online")
   end
 
-  get "/messages" do
-    mock_messages = [
-      %{
-        "id" => 1,
-        "timestamp" => "2024-05-01T12:00:00Z",
-        "sender" => "Alice",
-        "content" => "Hello!"
-      },
-      %{"id" => 2, "timestamp" => "2024-05-02T12:00:00Z", "sender" => "Bob", "content" => "Hi!"}
-    ]
+  get "/handles" do
+    send_json(conn, 200, Imessaged.handles())
+  end
 
-    send_json(conn, 200, mock_messages)
+  get "/chats" do
+    send_json(conn, 200, Imessaged.chats())
+  end
+
+  get "/messages" do
+
+    # send_json(conn, 200, Imessaged.messages())
+    send_json(conn, 200, %{"b" => :rand.bytes(500)})
   end
 
   get "/messages/sinceTimestamp" do
@@ -90,9 +90,17 @@ defmodule Imessaged.Router do
 
   post "/sendMessage" do
     # Extract message data from the request
-    message_data = conn.body_params["message"]
-    Logger.info("Sending message: #{inspect(message_data)}")
-    send_resp(conn, 200, "Message sent successfully!")
+    with true <- is_bitstring(conn.body_params["body"]),
+         true <- is_bitstring(conn.body_params["recipient"]) do
+      Imessaged.send_message(
+        conn.body_params["body"],
+        conn.body_params["recipient"]
+      )
+
+      send_resp(conn, 200, "Message sent successfully!")
+    else
+      _ -> send_resp(conn, 400, "Error with request.")
+    end
   end
 
   post "/sendAttachment" do
