@@ -21,8 +21,12 @@ defmodule Imessaged.Router do
 
   # Retrieve messages
   get "/messages" do
-    filters = Map.new(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
-    messages = Imessaged.get_messages(filters)
+    filters = Enum.map(conn.query_params, fn {k, v} -> {String.to_atom(k), v} end)
+
+    messages =
+      Imessaged.get_messages(filters)
+      |> Enum.map(&encode_binary_values/1)
+
     send_json(conn, 200, messages)
   end
 
@@ -35,7 +39,7 @@ defmodule Imessaged.Router do
 
   # Retrieve chats
   get "/chats" do
-    filters = Map.new(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
+    filters = Enum.map(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
     chats = Imessaged.get_chats(filters)
     send_json(conn, 200, chats)
   end
@@ -49,7 +53,7 @@ defmodule Imessaged.Router do
 
   # Retrieve attachments
   get "/attachments" do
-    filters = Map.new(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
+    filters = Enum.map(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
     attachments = Imessaged.get_attachments(filters)
     send_json(conn, 200, attachments)
   end
@@ -63,7 +67,7 @@ defmodule Imessaged.Router do
 
   # Retrieve handles
   get "/handles" do
-    filters = Map.new(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
+    filters = Enum.map(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
     handles = Imessaged.get_handles(filters)
     send_json(conn, 200, handles)
   end
@@ -78,7 +82,7 @@ defmodule Imessaged.Router do
   # Retrieve messages in a chat
   get "/chats/:chatID/messages" do
     chat_id = String.to_integer(conn.params["chatID"])
-    filters = Map.new(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
+    filters = Enum.map(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
     messages = Imessaged.get_messages(Keyword.put(filters, :chatID, chat_id))
     send_json(conn, 200, messages)
   end
@@ -86,7 +90,7 @@ defmodule Imessaged.Router do
   # Retrieve attachments in a chat
   # get "/chats/:chatID/attachments" do
   #   chat_id = String.to_integer(conn.params["chatID"])
-  #   filters = Map.new(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
+  #   filters = Enum.map(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
   #   attachments = Imessaged.get_attachments(Keyword.put(filters, :chatID, chat_id))
   #   send_json(conn, 200, attachments)
   # end
@@ -122,7 +126,7 @@ defmodule Imessaged.Router do
   # Search messages
   get "/messages/search" do
     query_str = conn.params["query"]
-    filters = Map.new(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
+    filters = Enum.map(conn.params, fn {k, v} -> {String.to_atom(k), v} end)
     messages = Imessaged.search_messages(query_str, filters)
     send_json(conn, 200, messages)
   end
@@ -146,7 +150,8 @@ defmodule Imessaged.Router do
     send_resp(conn, 404, "Not Found")
   end
 
-  defp handle_errors(conn, %{kind: _kind, reason: _reason, stack: _stack}) do
+  @impl Plug.ErrorHandler
+  def handle_errors(conn, %{kind: _kind, reason: _reason, stack: _stack}) do
     send_resp(conn, conn.status, Jason.encode!(%{error: "Something went wrong"}))
   end
 
@@ -154,5 +159,17 @@ defmodule Imessaged.Router do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(status, Jason.encode!(data))
+  end
+
+  @spec encode_binary_values(map()) :: map()
+  defp encode_binary_values(m) when is_map(m) do
+    Enum.map(m, fn {k, v} ->
+      if is_binary(v) and not String.valid?(v) do
+        {k, :base64.encode(v)}
+      else
+        {k, v}
+      end
+    end)
+    |> Map.new()
   end
 end
