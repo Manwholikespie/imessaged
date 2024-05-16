@@ -5,11 +5,14 @@ defmodule Imessaged do
   Retrieve messages with optional filters
   """
   def get_messages(filters \\ []) do
+    limit_clause = filters |> Keyword.get(:limit, "") |> format_limit_clause()
+
     """
     SELECT * FROM message
     WHERE 1=1
     #{filters_to_sql(filters)}
-    ORDER BY date DESC;
+    ORDER BY date DESC
+    #{limit_clause};
     """
     |> Query.query()
   end
@@ -23,27 +26,34 @@ defmodule Imessaged do
 
   # Retrieve chats with optional filters
   def get_chats(filters \\ []) do
+    limit_clause = filters |> Keyword.get(:limit, "") |> format_limit_clause()
+
     """
     SELECT * FROM chat
     WHERE 1=1
     #{filters_to_sql(filters)}
-    ORDER BY last_read_message_timestamp DESC;
+    ORDER BY last_read_message_timestamp DESC
+    #{limit_clause};
     """
     |> Query.query()
   end
 
   # Retrieve a chat by ID
+  @spec get_chat(any()) :: any()
   def get_chat(id) do
     Query.query("SELECT * FROM chat WHERE ROWID = #{id};")
   end
 
   # Retrieve attachments with optional filters
   def get_attachments(filters \\ []) do
+    limit_clause = filters |> Keyword.get(:limit, "") |> format_limit_clause()
+
     """
     SELECT * FROM attachment
     WHERE 1=1
     #{filters_to_sql(filters)}
-    ORDER BY created_date DESC;
+    ORDER BY created_date DESC
+    #{limit_clause};
     """
     |> Query.query()
   end
@@ -55,11 +65,14 @@ defmodule Imessaged do
 
   # Retrieve handles with optional filters
   def get_handles(filters \\ []) do
+    limit_clause = filters |> Keyword.get(:limit, "") |> format_limit_clause()
+
     """
     SELECT * FROM handle
     WHERE 1=1
     #{filters_to_sql(filters)}
-    ORDER BY id ASC;
+    ORDER BY id ASC
+    #{limit_clause};
     """
     |> Query.query()
   end
@@ -81,11 +94,14 @@ defmodule Imessaged do
 
   # Search messages
   def search_messages(query_str, filters \\ []) do
+    limit_clause = filters |> Keyword.get(:limit, "") |> format_limit_clause()
+
     """
     SELECT * FROM message
     WHERE text LIKE '%' || #{query_str} || '%'
     #{filters_to_sql(filters)}
-    ORDER BY date DESC;
+    ORDER BY date DESC
+    #{limit_clause};
     """
     |> Query.query()
   end
@@ -112,7 +128,9 @@ defmodule Imessaged do
 
   # Helper function to convert filters to SQL conditions
   defp filters_to_sql(filters) do
-    Enum.map(filters, fn
+    filters
+    |> Enum.filter(fn {key, _} -> key != :limit end)
+    |> Enum.map(fn
       {:sinceTimestamp, ts} -> "AND date > #{ts}"
       {:sinceRowID, row_id} -> "AND ROWID > #{row_id}"
       {:chatID, chat_id} -> "AND chat_id = #{chat_id}"
@@ -120,11 +138,14 @@ defmodule Imessaged do
       {:isFromMe, is_from_me} -> "AND is_from_me = #{is_from_me}"
       {:hasAttachments, has_attachments} -> "AND cache_has_attachments = #{has_attachments}"
       {:isRead, is_read} -> "AND is_read = #{is_read}"
-      {:limit, limit} -> "LIMIT #{limit}"
       _ -> ""
     end)
     |> Enum.join(" ")
   end
+
+  # Helper function to format the LIMIT clause
+  defp format_limit_clause(limit) when limit == "", do: ""
+  defp format_limit_clause(limit), do: "LIMIT #{limit}"
 
   def send_message(body, recipient_or_chat_id)
       when is_bitstring(body) and is_bitstring(recipient_or_chat_id) do
