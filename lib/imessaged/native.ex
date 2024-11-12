@@ -6,7 +6,7 @@ defmodule Imessaged.Native do
     :erlang.load_nif(String.to_charlist(path), 0)
   end
 
-  def send_message(_message, _phone_number) do
-    raise "NIF send_message/2 not implemented"
-  end
+  def send_message(_message, _recipient), do: :erlang.nif_error(:nif_not_loaded)
+  def send_to_chat(_message, _chat_id), do: :erlang.nif_error(:nif_not_loaded)
+  def list_chats(), do: :erlang.nif_error(:nif_not_loaded)
 end
