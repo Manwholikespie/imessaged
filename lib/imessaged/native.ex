@@ -9,4 +9,6 @@ defmodule Imessaged.Native do
   def send_message(_message, _recipient), do: :erlang.nif_error(:nif_not_loaded)
   def send_to_chat(_message, _chat_id), do: :erlang.nif_error(:nif_not_loaded)
   def list_chats(), do: :erlang.nif_error(:nif_not_loaded)
+  def list_chat_properties(), do: :erlang.nif_error(:nif_not_loaded)
+  def list_chat_methods(), do: :erlang.nif_error(:nif_not_loaded)
 end

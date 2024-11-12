@@ -1,20 +1,8 @@
 #include "erl_nif.h"
 #import <Foundation/Foundation.h>
 #import <ScriptingBridge/ScriptingBridge.h>
-
-// Define the Messages application interface
-@interface MessagesApplication : SBApplication
-- (id)send:(id)text to:(id)recipient;
-@property (readonly) NSArray *participants;
-@property (readonly) NSArray *accounts;
-@property (readonly) NSArray *chats;
-@end
-
-@interface MessagesChat : NSObject
-@property (readonly) NSString *id;
-@property (readonly) NSString *name;
-@property (readonly) NSArray *participants;
-@end
+#import <objc/runtime.h>
+#import "Messages.h"
 
 // Helper function to convert NSString to ERL_NIF_TERM
 static ERL_NIF_TERM make_string(ErlNifEnv* env, NSString* str) {
@@ -266,10 +254,67 @@ static ERL_NIF_TERM list_chats(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv
     }
 }
 
+static ERL_NIF_TERM list_chat_properties(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    @autoreleasepool {
+        Class chatClass = NSClassFromString(@"MessagesChat");
+        if (!chatClass) {
+            return enif_make_tuple2(env,
+                                    enif_make_atom(env, "error"),
+                                    make_string(env, @"MessagesChat class not found"));
+        }
+
+        unsigned int propertyCount = 0;
+        objc_property_t *properties = class_copyPropertyList(chatClass, &propertyCount);
+
+        ERL_NIF_TERM propList = enif_make_list(env, 0);
+
+        for (unsigned int i = 0; i < propertyCount; i++) {
+            const char *propName = property_getName(properties[i]);
+            ERL_NIF_TERM propTerm = enif_make_string(env, propName, ERL_NIF_LATIN1);
+            propList = enif_make_list_cell(env, propTerm, propList);
+        }
+
+        free(properties);
+
+        return enif_make_tuple2(env, enif_make_atom(env, "ok"), propList);
+    }
+}
+
+static ERL_NIF_TERM list_chat_methods(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    @autoreleasepool {
+        Class chatClass = NSClassFromString(@"MessagesChat");
+        if (!chatClass) {
+            return enif_make_tuple2(env,
+                                    enif_make_atom(env, "error"),
+                                    make_string(env, @"MessagesChat class not found"));
+        }
+
+        unsigned int methodCount = 0;
+        Method *methods = class_copyMethodList(chatClass, &methodCount);
+
+        ERL_NIF_TERM methodList = enif_make_list(env, 0);
+
+        for (unsigned int i = 0; i < methodCount; i++) {
+            SEL selector = method_getName(methods[i]);
+            const char *methodName = sel_getName(selector);
+            ERL_NIF_TERM methodTerm = enif_make_string(env, methodName, ERL_NIF_LATIN1);
+            methodList = enif_make_list_cell(env, methodTerm, methodList);
+        }
+
+        free(methods);
+
+        return enif_make_tuple2(env, enif_make_atom(env, "ok"), methodList);
+    }
+}
+
 static ErlNifFunc nif_funcs[] = {
     {"send_message", 2, send_message},
     {"send_to_chat", 2, send_to_chat},
-    {"list_chats", 0, list_chats}
+    {"list_chats", 0, list_chats},
+    {"list_chat_properties", 0, list_chat_properties},
+    {"list_chat_methods", 0, list_chat_methods}
 };
 
 ERL_NIF_INIT(Elixir.Imessaged.Native, nif_funcs, NULL, NULL, NULL, NULL) 

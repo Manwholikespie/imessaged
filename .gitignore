@@ -13,6 +13,7 @@ imessaged-*.tar
 /tmp/
 
 # Objective-C / NIF artifacts
+*.h
 *.so
 *.o
 *.dylib

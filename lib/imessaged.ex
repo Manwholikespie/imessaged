@@ -38,4 +38,18 @@ defmodule Imessaged do
   def send_message(message, recipient) when is_binary(message) and is_binary(recipient) do
     Native.send_message(message, recipient)
   end
+
+  @doc """
+  Lists all properties of the MessagesChat class.
+  """
+  def list_chat_properties do
+    Native.list_chat_properties()
+  end
+
+  @doc """
+  Lists all methods of the MessagesChat class.
+  """
+  def list_chat_methods do
+    Native.list_chat_methods()
+  end
 end
