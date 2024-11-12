@@ -1,4 +1,5 @@
 .DS_Store
+*.sdef
 
 # The directory Mix will write compiled artifacts to.
 /_build/

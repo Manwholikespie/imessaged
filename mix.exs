@@ -10,7 +10,8 @@ defmodule Imessaged.MixProject do
       deps: deps(),
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_clean: ["clean"],
-      make_cwd: "c_src"
+      make_cwd: "c_src",
+      aliases: aliases()
     ]
   end
 
@@ -25,6 +26,12 @@ defmodule Imessaged.MixProject do
   defp deps do
     [
       {:elixir_make, "~> 0.7.3"}
+    ]
+  end
+
+  defp aliases do
+    [
+      compile: ["copy_sdef", "compile"]
     ]
   end
 end
