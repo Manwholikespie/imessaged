@@ -4,8 +4,12 @@ TARGET = ../priv/imessaged_nif.so
 
 $(TARGET): imessaged_nif.m
 	mkdir -p ../priv
-	$(CC) $(CFLAGS) $(LDFLAGS) -framework Foundation -framework CoreServices \
+	$(CC) $(CFLAGS) $(LDFLAGS) \
+		-framework Foundation \
+		-framework CoreServices \
+		-framework ScriptingBridge \
+		-framework AppKit \
 		-o $(TARGET) imessaged_nif.m
 
 clean:
-	rm -f $(TARGET) 
+	rm -f $(TARGET)

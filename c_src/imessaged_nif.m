@@ -1,5 +1,31 @@
 #include "erl_nif.h"
 #import <Foundation/Foundation.h>
+#import <ScriptingBridge/ScriptingBridge.h>
+
+// Define the Messages application interface
+@interface MessagesApplication : SBApplication
+- (id)send:(id)text to:(id)participant;
+@property (readonly) NSArray *participants;
+@property (readonly) NSArray *accounts;
+@end
+
+// Forward declarations for Messages.app scripting interface
+@protocol MessagesApplication
+- (id)send:(id)text to:(id)participant;
+@property (readonly) NSArray *participants;
+@property (readonly) NSArray *accounts;
+@end
+
+@protocol MessagesParticipant
+@property (readonly) NSString *handle;
+@property (readonly) NSString *id;
+@property (readonly) NSString *name;
+@end
+
+@protocol MessagesAccount
+@property (readonly) NSString *id;
+@property (readonly) NSString *serviceType; // "iMessage" or "SMS"
+@end
 
 // Helper function to convert NSString to ERL_NIF_TERM
 static ERL_NIF_TERM make_string(ErlNifEnv* env, NSString* str) {
@@ -10,60 +36,90 @@ static ERL_NIF_TERM make_string(ErlNifEnv* env, NSString* str) {
     return binary;
 }
 
-// Helper function to convert NSError to ERL_NIF_TERM tuple
-static ERL_NIF_TERM make_error(ErlNifEnv* env, NSError* error) {
-    ERL_NIF_TERM reason = make_string(env, [error localizedDescription]);
-    return enif_make_tuple2(env, enif_make_atom(env, "error"), reason);
-}
-
-static ERL_NIF_TERM load_sdef(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+static ERL_NIF_TERM send_message(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
-    ErlNifBinary path_bin;
+    ErlNifBinary message_bin, recipient_bin;
     
-    if (!enif_inspect_binary(env, argv[0], &path_bin)) {
-        return enif_make_tuple2(env,
-            enif_make_atom(env, "error"),
-            enif_make_atom(env, "invalid_binary"));
+    if (!enif_inspect_binary(env, argv[0], &message_bin) ||
+        !enif_inspect_binary(env, argv[1], &recipient_bin)) {
+        return enif_make_atom(env, "error");
     }
-
-    // Create a null-terminated string
-    char* filename = (char*)enif_alloc(path_bin.size + 1);
-    if (!filename) {
-        return enif_make_tuple2(env,
-            enif_make_atom(env, "error"),
-            enif_make_atom(env, "out_of_memory"));
-    }
-    
-    memcpy(filename, path_bin.data, path_bin.size);
-    filename[path_bin.size] = '\0';
 
     @autoreleasepool {
-        NSString* path = [NSString stringWithUTF8String:filename];
-        enif_free(filename);
+        NSString* message = [[NSString alloc] initWithBytes:message_bin.data
+                                                   length:message_bin.size
+                                                 encoding:NSUTF8StringEncoding];
         
-        if (!path) {
+        NSString* recipient = [[NSString alloc] initWithBytes:recipient_bin.data
+                                                     length:recipient_bin.size
+                                                   encoding:NSUTF8StringEncoding];
+
+        MessagesApplication* messages = [SBApplication applicationWithBundleIdentifier:@"com.apple.MobileSMS"];
+        
+        if (!messages) {
             return enif_make_tuple2(env,
-                enif_make_atom(env, "error"),
-                enif_make_atom(env, "invalid_utf8"));
-        }
-        
-        NSError* error = nil;
-        NSXMLDocument* sdef = [[NSXMLDocument alloc] initWithContentsOfURL:[NSURL fileURLWithPath:path] 
-                                                                  options:0 
-                                                                    error:&error];
-        
-        if (error) {
-            return make_error(env, error);
+                                  enif_make_atom(env, "error"),
+                                  make_string(env, @"Could not connect to Messages.app"));
         }
 
-        return enif_make_tuple2(env, 
-                              enif_make_atom(env, "ok"),
-                              make_string(env, [sdef XMLString]));
+        // First try to find an existing participant
+        id participants = [messages valueForKey:@"participants"];
+        id participant = nil;
+        
+        for (id p in participants) {
+            NSString* handle = [p handle];
+            // Check for both the exact handle and normalized forms
+            if ([handle isEqualToString:recipient] ||
+                [handle.lowercaseString isEqualToString:recipient.lowercaseString]) {
+                participant = p;
+                break;
+            }
+        }
+
+        // If no participant found, we need to determine if this is an iMessage account
+        if (!participant) {
+            // Check if the recipient looks like an email
+            if ([recipient containsString:@"@"]) {
+                // Look for an iMessage account
+                NSArray* accounts = [messages valueForKey:@"accounts"];
+                BOOL hasIMessage = NO;
+                
+                for (id account in accounts) {
+                    NSString* serviceType = [account valueForKey:@"serviceType"];
+                    if ([serviceType isEqualToString:@"iMessage"]) {
+                        hasIMessage = YES;
+                        break;
+                    }
+                }
+                
+                if (!hasIMessage) {
+                    return enif_make_tuple2(env,
+                                          enif_make_atom(env, "error"),
+                                          make_string(env, @"No iMessage account available"));
+                }
+            }
+        }
+
+        // Send the message
+        @try {
+            if (participant) {
+                [messages send:message to:participant];
+            } else {
+                // Create a new conversation
+                // Note: Messages.app will validate if the recipient is valid
+                [messages send:message to:recipient];
+            }
+            return enif_make_atom(env, "ok");
+        } @catch (NSException *exception) {
+            return enif_make_tuple2(env,
+                                  enif_make_atom(env, "error"),
+                                  make_string(env, [exception reason]));
+        }
     }
 }
 
 static ErlNifFunc nif_funcs[] = {
-    {"load_sdef", 1, load_sdef}
+    {"send_message", 2, send_message}
 };
 
 ERL_NIF_INIT(Elixir.Imessaged.Native, nif_funcs, NULL, NULL, NULL, NULL) 
