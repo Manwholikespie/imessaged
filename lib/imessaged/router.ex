@@ -161,6 +161,8 @@ defmodule Imessaged.Router do
     |> send_resp(status, Jason.encode!(data))
   end
 
+  # TODO: I'm sure this is ridiculously slow. In the future, aim to have a set
+  #       collection of fields worth actually using.
   @spec encode_binary_values(map()) :: map()
   defp encode_binary_values(m) when is_map(m) do
     Enum.map(m, fn {k, v} ->
