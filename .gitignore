@@ -1,5 +1,10 @@
 .DS_Store
 *.sdef
+*.out
+notes/
+
+# generated c src files
+c_src/Messages.h
 
 # Mix artifacts
 /_build/
@@ -13,7 +18,7 @@ imessaged-*.tar
 /tmp/
 
 # Objective-C / NIF artifacts
-*.h
+# *.h
 *.so
 *.o
 *.dylib
