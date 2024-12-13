@@ -1,28 +1,40 @@
 .DS_Store
+*.sdef
+*.out
+notes/
 
-# The directory Mix will write compiled artifacts to.
+# generated c src files
+c_src/Messages.h
+
+# Mix artifacts
 /_build/
-
-# If you run "mix test --cover", coverage assets end up here.
 /cover/
-
-# The directory Mix downloads your dependencies sources to.
 /deps/
-
-# Where third-party dependencies like ExDoc output generated docs.
 /doc/
-
-# Ignore .fetch files in case you like to edit your project deps locally.
 /.fetch
-
-# If the VM crashes, it generates a dump, let's ignore it too.
 erl_crash.dump
-
-# Also ignore archive artifacts (built via "mix archive.build").
 *.ez
-
-# Ignore package tarball (built via "mix hex.build").
 imessaged-*.tar
-
-# Temporary files, for example, from tests.
 /tmp/
+
+# Objective-C / NIF artifacts
+# *.h
+*.so
+*.o
+*.dylib
+*.a
+*.la
+*.lo
+*.bundle
+*.framework
+*.xcodeproj
+*.xcworkspace
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.build/
+.clangd

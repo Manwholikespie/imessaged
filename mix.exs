@@ -5,28 +5,36 @@ defmodule Imessaged.MixProject do
     [
       app: :imessaged,
       version: "0.1.0",
-      config_path: "config/config.exs",
-      elixir: "~> 1.15",
+      elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      compilers: [:elixir_make] ++ Mix.compilers(),
+      make_clean: ["clean"],
+      make_cwd: "c_src",
+      aliases: aliases()
     ]
   end
 
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      mod: {Imessaged.Application, []},
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Imessaged.Application, []}
     ]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:exqlite, "~> 0.21"},
-      {:plug_cowboy, "~> 2.0"},
-      {:jason, "~> 1.4"},
-      {:req, "~> 0.4.0"}
+      {:elixir_make, "~> 0.7.3"},
+      {:plug_cowboy, "~> 2.7"},
+      {:jason, "~> 1.4"}
+    ]
+  end
+
+  defp aliases do
+    [
+      compile: ["copy_sdef", "compile"]
     ]
   end
 end

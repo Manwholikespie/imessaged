@@ -1,128 +1,114 @@
 defmodule Imessaged.Router do
   use Plug.Router
-  require Logger
+
+  plug(:match)
 
   plug(Plug.Parsers,
-    parsers: [:urlencoded, :multipart, :json],
-    pass: ["*/*"],
+    parsers: [:json],
+    pass: ["application/json"],
     json_decoder: Jason
   )
 
-  plug(:match)
   plug(:dispatch)
 
-  def init(options), do: options
-
-  get "/" do
-    send_resp(conn, 200, "online")
+  # Send message to a buddy (phone/email)
+  post "/api/message/buddy" do
+    with {:ok, %{"message" => message, "handle" => handle}} <-
+           validate_message_params(conn.body_params),
+         :ok <- Imessaged.send_message_to_buddy(message, handle) do
+      send_json(conn, 200, %{status: "ok"})
+    else
+      {:error, reason} -> send_json(conn, 400, %{error: reason})
+    end
   end
 
-  get "/messages" do
-    mock_messages = [
-      %{
-        "id" => 1,
-        "timestamp" => "2024-05-01T12:00:00Z",
-        "sender" => "Alice",
-        "content" => "Hello!"
-      },
-      %{"id" => 2, "timestamp" => "2024-05-02T12:00:00Z", "sender" => "Bob", "content" => "Hi!"}
-    ]
-
-    send_json(conn, 200, mock_messages)
+  # Send message to a chat
+  post "/api/message/chat" do
+    with {:ok, %{"message" => message, "chat_id" => chat_id}} <-
+           validate_message_params(conn.body_params),
+         :ok <- Imessaged.send_message_to_chat(message, chat_id) do
+      send_json(conn, 200, %{status: "ok"})
+    else
+      {:error, reason} -> send_json(conn, 400, %{error: reason})
+    end
   end
 
-  get "/messages/sinceTimestamp" do
-    mock_messages = [
-      %{
-        "id" => 3,
-        "timestamp" => "2024-05-03T12:00:00Z",
-        "sender" => "Charlie",
-        "content" => "Good morning!"
-      }
-    ]
-
-    send_json(conn, 200, mock_messages)
+  # List all chats
+  get "/api/chats" do
+    case Imessaged.list_chats() do
+      {:ok, chats} -> send_json(conn, 200, %{chats: chats})
+      {:error, reason} -> send_json(conn, 500, %{error: reason})
+    end
   end
 
-  get "/messages/sinceRowID" do
-    mock_messages = [
-      %{
-        "id" => 4,
-        "timestamp" => "2024-05-04T12:00:00Z",
-        "sender" => "Dave",
-        "content" => "How are you?"
-      }
-    ]
-
-    send_json(conn, 200, mock_messages)
+  # List all buddies
+  get "/api/buddies" do
+    case Imessaged.list_buddies() do
+      {:ok, buddies} -> send_json(conn, 200, %{buddies: buddies})
+      {:error, reason} -> send_json(conn, 500, %{error: reason})
+    end
   end
 
-  get "/messages/groupChat/:id" do
-    group_id = conn.params["id"]
-
-    mock_messages = [
-      %{
-        "id" => 5,
-        "timestamp" => "2024-05-05T12:00:00Z",
-        "group_chat_id" => group_id,
-        "sender" => "Eve",
-        "content" => "Group chat message!"
-      }
-    ]
-
-    send_json(conn, 200, mock_messages)
+  # Send file to buddy
+  post "/api/file/buddy" do
+    with {:ok, %{"file_path" => file_path, "handle" => handle}} <-
+           validate_file_params(conn.body_params),
+         :ok <- Imessaged.send_file_to_buddy(file_path, handle) do
+      send_json(conn, 200, %{status: "ok"})
+    else
+      {:error, reason} -> send_json(conn, 400, %{error: reason})
+    end
   end
 
-  get "/messages/sender/:id" do
-    sender_id = conn.params["id"]
-
-    mock_messages = [
-      %{
-        "id" => 6,
-        "timestamp" => "2024-05-06T12:00:00Z",
-        "sender_id" => sender_id,
-        "content" => "Sender specific message!"
-      }
-    ]
-
-    send_json(conn, 200, mock_messages)
-  end
-
-  post "/sendMessage" do
-    # Extract message data from the request
-    message_data = conn.body_params["message"]
-    Logger.info("Sending message: #{inspect(message_data)}")
-    send_resp(conn, 200, "Message sent successfully!")
-  end
-
-  post "/sendAttachment" do
-    # Extract attachment data from the request
-    attachment_data = conn.body_params["attachment"]
-    Logger.info("Sending attachment: #{inspect(attachment_data)}")
-    send_resp(conn, 200, "Attachment sent successfully!")
-  end
-
-  post "/sendSticker" do
-    # Extract sticker data from the request
-    sticker_data = conn.body_params["sticker"]
-    Logger.info("Sending sticker: #{inspect(sticker_data)}")
-    send_resp(conn, 200, "Sticker sent successfully!")
-  end
-
-  post "/configureWebhook" do
-    # Extract webhook configuration data from the request
-    webhook_data = conn.body_params["webhook"]
-    Logger.info("Configuring webhook: #{inspect(webhook_data)}")
-    send_resp(conn, 200, "Webhook configured successfully!")
+  # Send file to chat
+  post "/api/file/chat" do
+    with {:ok, %{"file_path" => file_path, "chat_id" => chat_id}} <-
+           validate_file_params(conn.body_params),
+         :ok <- Imessaged.send_file_to_chat(file_path, chat_id) do
+      send_json(conn, 200, %{status: "ok"})
+    else
+      {:error, reason} -> send_json(conn, 400, %{error: reason})
+    end
   end
 
   match _ do
-    send_resp(conn, 404, "Not Found")
+    send_resp(conn, 404, "Not found")
   end
 
-  defp send_json(conn, status, data) do
+  # Helper functions
+  defp send_json(conn, status, body) do
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(status, Jason.encode!(data))
+    |> send_resp(status, Jason.encode!(body))
   end
+
+  defp validate_message_params(%{"message" => message} = params) when is_binary(message) do
+    cond do
+      Map.has_key?(params, "handle") ->
+        {:ok, %{"message" => message, "handle" => params["handle"]}}
+
+      Map.has_key?(params, "chat_id") ->
+        {:ok, %{"message" => message, "chat_id" => params["chat_id"]}}
+
+      true ->
+        {:error, "Missing handle or chat_id parameter"}
+    end
+  end
+
+  defp validate_message_params(_), do: {:error, "Invalid or missing message parameter"}
+
+  defp validate_file_params(%{"file_path" => path} = params) when is_binary(path) do
+    cond do
+      Map.has_key?(params, "handle") ->
+        {:ok, %{"file_path" => path, "handle" => params["handle"]}}
+
+      Map.has_key?(params, "chat_id") ->
+        {:ok, %{"file_path" => path, "chat_id" => params["chat_id"]}}
+
+      true ->
+        {:error, "Missing handle or chat_id parameter"}
+    end
+  end
+
+  defp validate_file_params(_), do: {:error, "Invalid or missing file_path parameter"}
 end
