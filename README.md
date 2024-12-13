@@ -43,7 +43,7 @@ curl http://localhost:4000/api/buddies
 curl -X POST http://localhost:4000/api/file/buddy \
   -H "Content-Type: application/json" \
   -d '{
-    "file_path": "~/Pictures/image.jpg", 
+    "file_path": "/Users/myself/Pictures/image.jpg", 
     "handle": "friend@example.com"
   }'
 ```
@@ -53,7 +53,7 @@ curl -X POST http://localhost:4000/api/file/buddy \
 curl -X POST http://localhost:4000/api/file/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "file_path": "~/Pictures/image.jpg", 
+    "file_path": "/Users/myself/Pictures/image.jpg", 
     "chat_id": "iMessage;-;chat123"
   }'
 ```
