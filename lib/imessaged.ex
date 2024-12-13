@@ -48,11 +48,22 @@ defmodule Imessaged do
   @doc """
   Sends a file to an individual person by their phone number or email.
   They need to have an existing conversation with you.
+
+  The file must:
+  - Exist
+  - Be less than 100MB
+  - Either be in ~/Pictures or it will be copied there
   """
   @spec send_file_to_buddy(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
   def send_file_to_buddy(file_path, handle) when is_binary(file_path) and is_binary(handle) do
     if is_email?(handle) or is_phone_number?(handle) do
-      @backend.send_file_to_buddy(file_path, handle)
+      case Imessaged.FileManager.prepare_file(file_path) do
+        {:ok, prepared_path} ->
+          @backend.send_file_to_buddy(prepared_path, handle)
+
+        {:error, _} = error ->
+          error
+      end
     else
       {:error, "Not a valid email or phone number."}
     end
@@ -60,9 +71,20 @@ defmodule Imessaged do
 
   @doc """
   Sends a file to a specific chat by its ID.
+
+  The file must:
+  - Exist
+  - Be less than 100MB
+  - Either be in ~/Pictures or it will be copied there
   """
   @spec send_file_to_chat(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
   def send_file_to_chat(file_path, chat_id) when is_binary(file_path) and is_binary(chat_id) do
-    @backend.send_file_to_chat(file_path, chat_id)
+    case Imessaged.FileManager.prepare_file(file_path) do
+      {:ok, prepared_path} ->
+        @backend.send_file_to_chat(prepared_path, chat_id)
+
+      {:error, _} = error ->
+        error
+    end
   end
 end
