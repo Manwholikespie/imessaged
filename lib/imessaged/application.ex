@@ -1,7 +1,9 @@
 defmodule Imessaged.Application do
+  require Logger
   use Application
 
   def start(_type, _args) do
+    Logger.info("starting imessaged")
     children = build_children()
 
     opts = [strategy: :one_for_one, name: Imessaged.Supervisor]

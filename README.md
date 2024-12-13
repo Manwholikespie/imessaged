@@ -113,7 +113,12 @@ config :imessaged,
 
 ## Installation
 
+Assumes you have Elixir/Erlang [installed](https://gist.github.com/Manwholikespie/1bc76cba05f536fc5ec5f998cb56ac97).
 
+```bash
+MIX_ENV=prod mix release --overwrite
+_build/prod/rel/imessaged/bin/imessaged start
+```
 
 <!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `imessaged` to your list of dependencies in `mix.exs`:
