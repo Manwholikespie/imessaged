@@ -245,7 +245,7 @@ static ERL_NIF_TERM list_buddies(ErlNifEnv* env, int argc, const ERL_NIF_TERM ar
         for (id buddy in participants) {
             @try {
                 [buddyList addObject:@ {
-                    @"id" : [buddy valueForKey:@"id"],
+                    // @"id" : [buddy valueForKey:@"id"],
                     @"handle" : [buddy handle]
                 }];
             } @catch (NSException* exception) {
@@ -268,11 +268,11 @@ static ERL_NIF_TERM list_buddies(ErlNifEnv* env, int argc, const ERL_NIF_TERM ar
             ERL_NIF_TERM mapTerm = enif_make_new_map(env);
 
             // Add id
-            ERL_NIF_TERM idTerm = make_string(env, buddy[@"id"]);
-            enif_make_map_put(env, mapTerm,
-                enif_make_atom(env, "id"),
-                idTerm,
-                &mapTerm);
+            // ERL_NIF_TERM idTerm = make_string(env, buddy[@"id"]);
+            // enif_make_map_put(env, mapTerm,
+            //     enif_make_atom(env, "id"),
+            //     idTerm,
+            //     &mapTerm);
 
             // Add name
             ERL_NIF_TERM nameTerm = make_string(env, buddy[@"handle"]);

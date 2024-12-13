@@ -18,7 +18,7 @@ defmodule Imessaged.Native do
   def list_chats(), do: :erlang.nif_error(:nif_not_loaded)
 
   @spec list_buddies() ::
-          {:ok, list(%{id: bitstring(), handle: bitstring()})}
+          {:ok, list(%{handle: bitstring()})}
           | {:error, bitstring()}
   def list_buddies(), do: :erlang.nif_error(:nif_not_loaded)
 
