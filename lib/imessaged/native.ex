@@ -15,6 +15,9 @@ defmodule Imessaged.Native do
   @spec send_file_to_buddy(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
   def send_file_to_buddy(_file_path, _handle), do: :erlang.nif_error(:nif_not_loaded)
 
+  @spec send_file_to_chat(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
+  def send_file_to_chat(_file_path, _chat_id), do: :erlang.nif_error(:nif_not_loaded)
+
   @spec list_chats() ::
           {:ok, list(%{id: bitstring(), name: bitstring(), participants: list(bitstring())})}
           | {:error, bitstring()}
@@ -24,8 +27,4 @@ defmodule Imessaged.Native do
           {:ok, list(%{handle: bitstring()})}
           | {:error, bitstring()}
   def list_buddies(), do: :erlang.nif_error(:nif_not_loaded)
-
-  def list_chat_properties(), do: :erlang.nif_error(:nif_not_loaded)
-
-  def list_chat_methods(), do: :erlang.nif_error(:nif_not_loaded)
 end

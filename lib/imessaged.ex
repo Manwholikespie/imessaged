@@ -44,4 +44,25 @@ defmodule Imessaged do
   def list_buddies do
     @backend.list_buddies()
   end
+
+  @doc """
+  Sends a file to an individual person by their phone number or email.
+  They need to have an existing conversation with you.
+  """
+  @spec send_file_to_buddy(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
+  def send_file_to_buddy(file_path, handle) when is_binary(file_path) and is_binary(handle) do
+    if is_email?(handle) or is_phone_number?(handle) do
+      @backend.send_file_to_buddy(file_path, handle)
+    else
+      {:error, "Not a valid email or phone number."}
+    end
+  end
+
+  @doc """
+  Sends a file to a specific chat by its ID.
+  """
+  @spec send_file_to_chat(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
+  def send_file_to_chat(file_path, chat_id) when is_binary(file_path) and is_binary(chat_id) do
+    @backend.send_file_to_chat(file_path, chat_id)
+  end
 end

@@ -40,6 +40,16 @@ defmodule Imessaged.Backend.Native do
     end
   end
 
+  @impl true
+  def send_file_to_buddy(file_path, handle) do
+    Native.send_file_to_buddy(file_path, handle)
+  end
+
+  @impl true
+  def send_file_to_chat(file_path, chat_id) do
+    Native.send_file_to_chat(file_path, chat_id)
+  end
+
   # Private helpers
 
   defp to_chat_struct(chat) do
