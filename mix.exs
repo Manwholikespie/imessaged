@@ -18,14 +18,17 @@ defmodule Imessaged.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Imessaged.Application, []}
     ]
   end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.7.3"}
+      {:elixir_make, "~> 0.7.3"},
+      {:plug_cowboy, "~> 2.7"},
+      {:jason, "~> 1.4"}
     ]
   end
 

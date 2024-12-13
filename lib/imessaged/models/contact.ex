@@ -4,6 +4,7 @@ defmodule Imessaged.Models.Contact do
   This could be someone with an email address or phone number.
   """
 
+  @derive {Jason.Encoder, only: [:handle]}
   alias __MODULE__
 
   defstruct [:handle]

@@ -6,31 +6,116 @@ This project provides a lightweight server for programmatically interacting with
 
 Messages.app exposes a Scripting Definition File (sdef). Using Apple's sdp tool, we can generate a header file. Our Objective-C code leverages this interface and loads into Elixir as a NIF.
 
-## Caveats
+## REST API
 
-**Important!** Messages.app has restrictions on which directories you can send files from. While the logic of allowed directories is not documented, we have confirmed that `~/Pictures` is an allowed location.
+The project includes a REST API that runs on port 4000 by default. Here are the available endpoints:
 
-## What methods are available?
+**Send Message to Buddy**
+```bash
+curl -X POST http://localhost:4000/api/message/buddy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Hello from API!", 
+    "handle": "+1234567890"
+  }'
+```
+
+**Send Message to Chat**
+```bash
+curl -X POST http://localhost:4000/api/message/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Hello group!", 
+    "chat_id": "iMessage;-;chat123"
+  }'
+```
+
+**List All Chats**
+```bash
+curl http://localhost:4000/api/chats
+```
+
+**List All Buddies**
+```bash
+curl http://localhost:4000/api/buddies
+```
+
+**Send File to Buddy**
+```bash
+curl -X POST http://localhost:4000/api/file/buddy \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "~/Pictures/image.jpg", 
+    "handle": "friend@example.com"
+  }'
+```
+
+**Send File to Chat**
+```bash
+curl -X POST http://localhost:4000/api/file/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "file_path": "~/Pictures/image.jpg", 
+    "chat_id": "iMessage;-;chat123"
+  }'
+```
+
+## Elixir API
 
 ```
-send_message_to_buddy(messageBody, phone_or_email)
-send_message_to_chat(messageBody, internal_chat_id)
-send_file_to_buddy(filePath, phone_or_email)
-send_file_to_chat(filePath, internal_chat_id)
+Imessaged.send_message_to_buddy(messageBody, phone_or_email)
+Imessaged.send_message_to_chat(messageBody, internal_chat_id)
+Imessaged.send_file_to_buddy(filePath, phone_or_email)
+Imessaged.send_file_to_chat(filePath, internal_chat_id)
+Imessaged.list_chats()
+Imessaged.list_buddies()
+```
+
+## Caveats
+
+### File Handling
+- **Directory Restrictions**: Messages.app has restrictions on which directories you can send files from. While the logic of allowed directories is not documented, it is confirmed that `~/Pictures` is an allowed location.
+
+- **File Management**: When sending files through this API:
+  - Files larger than 100MB will be rejected
+  - Files outside of `~/Pictures` will be automatically copied to `~/Pictures/imessaged/working/`
+  - Until we add automatic cleanup of this folder, feel free to use `Imessaged.FileCleaner.cleanup()` from time to time.
+
+### Directory Structure
+The program creates and manages the following directory structure:
+```
+~/Pictures/
+└── imessaged/
+    ├── static/    # For permanent files
+    └── working/   # For temporary files
+```
+
+## Configuration
+
+The following configuration options are available:
+
+```elixir
+# config/config.exs
+config :imessaged,
+  enable_rest_api: true,
+  rest_api_port: String.to_integer(System.get_env("PORT", "4000"))
 ```
 
 ## TODO
 
 - [X] Send messages to individuals and groups
 - [X] Send files to individuals and groups
-- [ ] Redo deleted REST API
+- [X] Redo deleted REST API
 - [ ] Figure out cleaner way to read messages. Sqlite may be only option. Unless... ;)
 - [ ] Easy install
+- [ ] Better logs
 - [ ] Send fireworks, etc.
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
+
+
+<!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `imessaged` to your list of dependencies in `mix.exs`:
 
 ```elixir
@@ -44,4 +129,4 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/imessaged>.
-
+ -->

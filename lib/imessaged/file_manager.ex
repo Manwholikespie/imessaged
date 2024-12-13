@@ -2,6 +2,10 @@ defmodule Imessaged.FileManager do
   @moduledoc """
   Manages files that will be sent through iMessage, ensuring they are in the correct location
   and handling cleanup of temporary files.
+
+  This is necessary as Messages.app has restrictions on which directories you can send files from.
+  While the logic of allowed directories is not documented, we have confirmed that
+  `~/Pictures` is an allowed location.
   """
 
   @pictures_dir Path.expand("~/Pictures")

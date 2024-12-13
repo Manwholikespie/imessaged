@@ -4,6 +4,7 @@ defmodule Imessaged.Models.Chat do
   A chat can be a one-on-one conversation or a group chat.
   """
 
+  @derive {Jason.Encoder, only: [:id, :name, :participants]}
   alias __MODULE__
 
   alias Imessaged.Models.Contact
