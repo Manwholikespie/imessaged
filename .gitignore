@@ -37,3 +37,4 @@ imessaged-*.tar
 xcuserdata/
 DerivedData/
 .build/
+.clangd
