@@ -5,12 +5,12 @@ defmodule Imessaged.Backend.Behaviour do
 
   alias Imessaged.Models.{Chat, Contact}
 
-  @type error :: {:error, String.t()}
+  @type error :: {:error, bitstring()}
 
-  @callback send_message_to_buddy(message :: String.t(), handle :: String.t()) ::
+  @callback send_message_to_buddy(message :: bitstring(), handle :: bitstring()) ::
               :ok | error
 
-  @callback send_message_to_chat(message :: String.t(), chat_id :: String.t()) ::
+  @callback send_message_to_chat(message :: bitstring(), chat_id :: bitstring()) ::
               :ok | error
 
   @callback list_chats() ::

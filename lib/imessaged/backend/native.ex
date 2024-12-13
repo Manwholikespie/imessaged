@@ -43,11 +43,11 @@ defmodule Imessaged.Backend.Native do
   # Private helpers
 
   defp to_chat_struct(chat) do
-    %Chat{
+    Chat.new(
       id: chat.id,
       name: chat.name,
-      participants: Enum.map(chat.participants, &%Contact{handle: &1})
-    }
+      participants: Enum.map(chat.participants, &Contact.new(handle: &1))
+    )
   end
 
   defp to_contact_struct(buddy) do
