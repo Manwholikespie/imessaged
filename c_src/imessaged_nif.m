@@ -346,9 +346,73 @@ static ERL_NIF_TERM list_chat_methods(ErlNifEnv* env, int argc, const ERL_NIF_TE
     }
 }
 
+static ERL_NIF_TERM send_file_to_buddy(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    ErlNifBinary file_path_bin, recipient_bin;
+
+    if (!enif_inspect_binary(env, argv[0], &file_path_bin) || !enif_inspect_binary(env, argv[1], &recipient_bin)) {
+        return enif_make_tuple2(env,
+            enif_make_atom(env, "error"),
+            make_string(env, @"Invalid arguments."));
+    }
+
+    @autoreleasepool {
+        NSString* filePath = [[NSString alloc] initWithBytes:file_path_bin.data
+                                                      length:file_path_bin.size
+                                                    encoding:NSUTF8StringEncoding];
+
+        NSString* recipient = [[NSString alloc] initWithBytes:recipient_bin.data
+                                                       length:recipient_bin.size
+                                                     encoding:NSUTF8StringEncoding];
+
+        MessagesApplication* messages = [SBApplication applicationWithBundleIdentifier:@"com.apple.MobileSMS"];
+
+        if (!messages) {
+            return enif_make_tuple2(env,
+                enif_make_atom(env, "error"),
+                make_string(env, @"Could not connect to Messages.app"));
+        }
+
+        // Ensure the application is running
+        if (![messages isRunning]) {
+            return enif_make_tuple2(env,
+                enif_make_atom(env, "error"),
+                make_string(env, @"Messages application is not running"));
+        }
+
+        // Check if file exists
+        if (![[NSFileManager defaultManager] fileExistsAtPath:filePath]) {
+            return enif_make_tuple2(env,
+                enif_make_atom(env, "error"),
+                make_string(env, @"File does not exist"));
+        }
+
+        // First try to find an existing participant by name
+        MessagesParticipant* participant = [[messages participants] objectWithName:recipient];
+
+        if (participant != nil) {
+            // Send the file
+            @try {
+                NSURL* fileURL = [NSURL fileURLWithPath:filePath];
+                [messages send:fileURL to:participant];
+                return enif_make_atom(env, "ok");
+            } @catch (NSException* exception) {
+                return enif_make_tuple2(env,
+                    enif_make_atom(env, "error"),
+                    make_string(env, [exception reason]));
+            }
+        } else {
+            return enif_make_tuple2(env,
+                enif_make_atom(env, "error"),
+                make_string(env, @"Could not find recipient. Have they messaged you before?"));
+        }
+    }
+}
+
 static ErlNifFunc nif_funcs[] = {
     { "send_message_to_buddy", 2, send_message_to_buddy },
     { "send_message_to_chat", 2, send_to_chat },
+    { "send_file_to_buddy", 2, send_file_to_buddy },
     { "list_chats", 0, list_chats },
     { "list_buddies", 0, list_buddies },
     { "list_chat_properties", 0, list_chat_properties },

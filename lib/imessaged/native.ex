@@ -12,6 +12,9 @@ defmodule Imessaged.Native do
   @spec send_message_to_chat(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
   def send_message_to_chat(_message, _chat_id), do: :erlang.nif_error(:nif_not_loaded)
 
+  @spec send_file_to_buddy(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
+  def send_file_to_buddy(_file_path, _handle), do: :erlang.nif_error(:nif_not_loaded)
+
   @spec list_chats() ::
           {:ok, list(%{id: bitstring(), name: bitstring(), participants: list(bitstring())})}
           | {:error, bitstring()}
