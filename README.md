@@ -116,6 +116,7 @@ The program creates and manages the following directory structure:
 - [ ] Figure out cleaner way to read messages. Sqlite may still be only option. Unless... ;)
 - [ ] Easy install
 - [ ] Better logs
+- [ ] Rate limiting
 - [ ] Send fireworks, etc.
 
 <!-- If [available in Hex](https://hex.pm/docs/publish), the package can be installed
