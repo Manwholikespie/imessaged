@@ -11,7 +11,7 @@ defmodule Imessaged.MixProject do
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_clean: ["clean"],
       make_cwd: "c_src",
-      aliases: aliases()
+      make_env: make_env()
     ]
   end
 
@@ -32,9 +32,16 @@ defmodule Imessaged.MixProject do
     ]
   end
 
-  defp aliases do
-    [
-      compile: ["copy_sdef", "compile"]
-    ]
+  defp make_env do
+    base = %{
+      "ERTS_INCLUDE_DIR" => "#{:code.root_dir()}/erts-#{:erlang.system_info(:version)}/include",
+      "ERL_INTERFACE_INCLUDE_DIR" => "#{:code.root_dir()}/usr/include",
+      "ERL_INTERFACE_LIB_DIR" => "#{:code.root_dir()}/usr/lib"
+    }
+
+    # Allow users to override environment variables
+    Enum.reduce(System.get_env(), base, fn {key, value}, acc ->
+      if String.starts_with?(key, "IMESSAGED_"), do: Map.put(acc, key, value), else: acc
+    end)
   end
 end
