@@ -1,0 +1,3 @@
+[submodule "native/imessage_parser/vendor/imessage-exporter"]
+	path = native/imessage_parser/vendor/imessage-exporter
+	url = https://github.com/ReagentX/imessage-exporter.git

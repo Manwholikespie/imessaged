@@ -8,10 +8,12 @@ defmodule Imessaged.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      compilers: [:elixir_make] ++ Mix.compilers(),
+      compilers: Mix.compilers() ++ [:elixir_make, :rustler],
       make_clean: ["clean"],
       make_cwd: "c_src",
-      make_env: make_env()
+      make_env: make_env(),
+      make_error_message: :default,
+      rustler_crates: rustler_crates()
     ]
   end
 
@@ -26,9 +28,12 @@ defmodule Imessaged.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.7.3"},
+      {:elixir_make, "~> 0.8"},
       {:plug_cowboy, "~> 2.7"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:exqlite, "~> 0.27"},
+      {:plist, "~> 0.0.6"},
+      {:rustler, "~> 0.29.0"}
     ]
   end
 
@@ -43,5 +48,14 @@ defmodule Imessaged.MixProject do
     Enum.reduce(System.get_env(), base, fn {key, value}, acc ->
       if String.starts_with?(key, "IMESSAGED_"), do: Map.put(acc, key, value), else: acc
     end)
+  end
+
+  defp rustler_crates do
+    [
+      imessage_parser: [
+        path: "native/imessage_parser",
+        mode: :release
+      ]
+    ]
   end
 end
