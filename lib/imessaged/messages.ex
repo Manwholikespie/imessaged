@@ -76,12 +76,7 @@ defmodule Imessaged.Messages do
                     "Failed to decode hex"
                 end
 
-              extracted_text =
-                if is_list(parsed) do
-                  TypedStream.extract_text(parsed)
-                else
-                  nil
-                end
+              extracted_text = TypedStream.extract_text(parsed)
 
               result
               |> Map.put("hex_body", hex_body)
@@ -192,14 +187,9 @@ defmodule Imessaged.Messages do
               case Base.decode16(content, case: :mixed) do
                 {:ok, binary_data} ->
                   # TypedStream.parse_typedstream returns the list directly, not {:ok, list}
+                  # TypedStream.parse_typedstream returns a keyword list with :text, etc.
                   parsed = TypedStream.parse_typedstream(binary_data)
-
-                  if is_list(parsed) do
-                    TypedStream.extract_text(parsed)
-                  else
-                    # Fall back to hex string if parsing fails
-                    content
-                  end
+                  TypedStream.extract_text(parsed)
 
                 # Fall back if hex decode fails
                 :error ->
@@ -227,7 +217,8 @@ defmodule Imessaged.Messages do
             "content_type" => content_type,
             # Tapback/reaction info
             "is_tapback" => MessageTypes.is_tapback?(associated_message_type),
-            "tapback_info" => MessageTypes.decode_tapback(associated_message_type, associated_message_emoji),
+            "tapback_info" =>
+              MessageTypes.decode_tapback(associated_message_type, associated_message_emoji),
             "references_message" => associated_message_guid,
             # App messages (games, payments, etc)
             "balloon_bundle_id" => balloon_bundle_id,

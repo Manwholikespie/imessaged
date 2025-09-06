@@ -1,7 +1,7 @@
 [package]
 name = "imessage_parser"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 name = "imessage_parser"
@@ -10,4 +10,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.29"
-imessage-database = { path = "vendor/imessage-exporter/imessage-database" }
+crabstep = "=0.3.2"

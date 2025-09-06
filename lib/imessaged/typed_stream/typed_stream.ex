@@ -8,28 +8,33 @@ defmodule Imessaged.TypedStream do
 
   @doc """
   Extracts text content from parsed typedstream data.
-  Looks for NSString objects and returns the string content.
+  The new NIF returns a keyword list with :text, :has_attachments, :has_mentions, :has_links
   """
   def extract_text(parsed) when is_list(parsed) do
-    # Look for NSString objects in the parsed typedstream data
-    Enum.find_value(parsed, fn
-      %{class_name: "NSString", data: [data | _]} ->
-        # Extract the actual string from the String(...) format
-        case Regex.run(~r/String\("(.*)"\)/, data) do
-          [_, text] -> text
-          _ -> nil
-        end
+    # Check if it's the new format (keyword list)
+    if Keyword.keyword?(parsed) do
+      Keyword.get(parsed, :text, "[Unable to extract text]")
+    else
+      # Fallback for old format (list of maps) - kept for compatibility
+      Enum.find_value(parsed, fn
+        %{class_name: "NSString", data: [data | _]} ->
+          # Extract the actual string from the String(...) format
+          case Regex.run(~r/String\("(.*)"\)/, data) do
+            [_, text] -> text
+            _ -> nil
+          end
 
-      %{class_name: "NSMutableString", data: [data | _]} ->
-        # Also handle NSMutableString
-        case Regex.run(~r/String\("(.*)"\)/, data) do
-          [_, text] -> text
-          _ -> nil
-        end
+        %{class_name: "NSMutableString", data: [data | _]} ->
+          # Also handle NSMutableString
+          case Regex.run(~r/String\("(.*)"\)/, data) do
+            [_, text] -> text
+            _ -> nil
+          end
 
-      _ ->
-        nil
-    end) || "[Unable to extract text]"
+        _ ->
+          nil
+      end) || "[Unable to extract text]"
+    end
   end
 
   def extract_text(_), do: "[Unable to extract text]"
