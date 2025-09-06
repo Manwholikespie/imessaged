@@ -1,27 +1,32 @@
 defmodule Imessaged.Models.Message do
   @moduledoc """
-  Represents an iMessage message with support for edit history.
+  Represents an iMessage message.
   """
 
   defstruct [
-    :id,                # ROWID from SQLite
-    :guid,             # Unique message identifier
-    :text,             # Message content
-    :date,             # Timestamp of message
-    :date_edited,      # Timestamp of edit if edited
-    :is_from_me,       # Boolean indicating if sent by user
-    :edit_history,     # List of previous versions if edited
-    :service          # iMessage/SMS
+    # ROWID from SQLite
+    :id,
+    # Unique message identifier
+    :guid,
+    # Message content
+    :text,
+    # Timestamp of message
+    :date,
+    # Timestamp of edit if edited
+    :date_edited,
+    # Boolean indicating if sent by user
+    :is_from_me,
+    # iMessage/SMS
+    :service
   ]
 
   @type t :: %__MODULE__{
-    id: integer(),
-    guid: String.t(),
-    text: String.t(),
-    date: integer(),
-    date_edited: integer() | nil,
-    is_from_me: boolean(),
-    edit_history: list(map()) | nil,
-    service: String.t()
-  }
+          id: integer(),
+          guid: String.t(),
+          text: String.t(),
+          date: integer(),
+          date_edited: integer() | nil,
+          is_from_me: boolean(),
+          service: String.t()
+        }
 end

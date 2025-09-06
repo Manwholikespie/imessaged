@@ -8,7 +8,7 @@ defmodule Imessaged.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      compilers: Mix.compilers() ++ [:elixir_make, :rustler],
+      compilers: Mix.compilers() ++ [:elixir_make],
       make_clean: ["clean"],
       make_cwd: "c_src",
       make_env: make_env(),
