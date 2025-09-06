@@ -3,7 +3,6 @@ defmodule Imessaged.Messages do
   Service for retrieving messages with support for filtering and edit history.
   """
 
-  alias Imessaged.Models.Message
   alias Imessaged.DB
   alias Imessaged.TypedStream
   alias Imessaged.MessageTypes
@@ -101,22 +100,27 @@ defmodule Imessaged.Messages do
   end
 
   @doc """
-  Get recent messages with their content decoded from attributedBody when present.
-  Returns the 10 most recent messages with parsed content.
+  Get recent messages with comprehensive data including replies, edits, and chat context.
+  Returns the most recent messages with parsed content and full metadata.
   """
   def get_recent_messages(limit \\ 10) do
     query = """
     SELECT
         m.ROWID as message_id,
+        m.guid,
         CASE
           WHEN m.text IS NOT NULL AND m.text != '' THEN m.text
           WHEN m.attributedBody IS NOT NULL THEN hex(m.attributedBody)
           ELSE NULL
         END as content,
         datetime(m.date/1000000000 + strftime('%s', '2001-01-01'), 'unixepoch', 'localtime') as date,
+        datetime(m.date_read/1000000000 + strftime('%s', '2001-01-01'), 'unixepoch', 'localtime') as date_read,
+        datetime(m.date_delivered/1000000000 + strftime('%s', '2001-01-01'), 'unixepoch', 'localtime') as date_delivered,
         h.id as sender,
         m.is_from_me,
-        m.is_audio_message,
+        m.is_read,
+        m.item_type,
+        m.service,
         m.cache_has_attachments,
         m.subject,
         CASE
@@ -125,14 +129,24 @@ defmodule Imessaged.Messages do
           ELSE 2
         END as content_type,
         m.associated_message_type,
-        m.associated_message_guid
+        m.associated_message_guid,
+        m.associated_message_emoji,
+        m.balloon_bundle_id,
+        m.expressive_send_style_id,
+        m.thread_originator_guid,
+        m.thread_originator_part,
+        m.date_edited,
+        m.group_title,
+        m.group_action_type,
+        c.chat_id,
+        (SELECT COUNT(*) FROM message_attachment_join a WHERE m.ROWID = a.message_id) as num_attachments,
+        (SELECT COUNT(*) FROM message m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
       FROM message m
-      INNER JOIN handle h ON h.ROWID = m.handle_id
+      LEFT JOIN handle h ON h.ROWID = m.handle_id
+      LEFT JOIN chat_message_join c ON m.ROWID = c.message_id
       WHERE 1=1
         AND (m.text IS NOT NULL OR m.attributedBody IS NOT NULL OR m.cache_has_attachments = 1)
         AND m.is_from_me IS NOT NULL  -- Ensure it's a real message
-        AND m.item_type = 0  -- Regular messages only
-        AND m.is_audio_message = 0  -- Skip audio messages
       ORDER BY m.date DESC
       LIMIT ?1
     """
@@ -143,16 +157,32 @@ defmodule Imessaged.Messages do
         Enum.map(rows, fn row ->
           [
             rowid,
+            guid,
             content,
             date,
+            date_read,
+            date_delivered,
             sender,
             from_me,
-            is_audio_message,
+            is_read,
+            item_type,
+            service,
             has_attachments,
             subject,
             content_type,
             associated_message_type,
-            associated_message_guid
+            associated_message_guid,
+            associated_message_emoji,
+            balloon_bundle_id,
+            expressive_send_style_id,
+            thread_originator_guid,
+            thread_originator_part,
+            date_edited,
+            group_title,
+            group_action_type,
+            chat_id,
+            num_attachments,
+            num_replies
           ] = row
 
           # Parse attributedBody with TypedStream if it's hex-encoded
@@ -181,17 +211,39 @@ defmodule Imessaged.Messages do
 
           %{
             "ROWID" => rowid,
+            "guid" => guid,
             "content" => parsed_content,
             "date" => date,
+            "date_read" => date_read,
+            "date_delivered" => date_delivered,
             "sender" => sender,
             "from_me" => from_me,
-            "is_audio_message" => is_audio_message,
+            "is_read" => is_read,
+            "item_type" => item_type,
+            "service" => service,
             "has_attachments" => has_attachments,
+            "num_attachments" => num_attachments,
             "subject" => subject,
             "content_type" => content_type,
+            # Tapback/reaction info
             "is_tapback" => MessageTypes.is_tapback?(associated_message_type),
-            "tapback_info" => MessageTypes.decode_tapback(associated_message_type),
-            "references_message" => associated_message_guid
+            "tapback_info" => MessageTypes.decode_tapback(associated_message_type, associated_message_emoji),
+            "references_message" => associated_message_guid,
+            # App messages (games, payments, etc)
+            "balloon_bundle_id" => balloon_bundle_id,
+            # Message effects (slam, gentle, invisible ink, etc)
+            "expressive_send_style_id" => expressive_send_style_id,
+            # Reply threading
+            "thread_originator_guid" => thread_originator_guid,
+            "thread_originator_part" => thread_originator_part,
+            "num_replies" => num_replies,
+            # Editing
+            "date_edited" => date_edited,
+            "is_edited" => date_edited != 0 && date_edited != nil,
+            # Group chat info
+            "group_title" => group_title,
+            "group_action_type" => group_action_type,
+            "chat_id" => chat_id
           }
         end)
 
