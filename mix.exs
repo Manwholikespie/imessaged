@@ -32,7 +32,6 @@ defmodule Imessaged.MixProject do
       {:plug_cowboy, "~> 2.7"},
       {:jason, "~> 1.4"},
       {:exqlite, "~> 0.27"},
-      {:plist, "~> 0.0.6"},
       {:rustler, "~> 0.29.0"}
     ]
   end
