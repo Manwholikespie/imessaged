@@ -14,6 +14,12 @@ This project provides a lightweight server for programmatically interacting with
 curl "http://localhost:4000/v1/chats/iMessage;-;chat123/messages?limit=20"
 ```
 
+**Get New Messages (Polling)**
+```bash
+# Get all messages since ROWID 12345
+curl "http://localhost:4000/v1/messages?since_id=12345&limit=100"
+```
+
 **Get Specific Message**
 ```bash
 curl http://localhost:4000/v1/messages/12345
@@ -70,6 +76,7 @@ Imessaged.list_buddies()
 Imessaged.Messages.get_messages(chat_id, limit: 20)
 Imessaged.Messages.get_message(message_id)
 Imessaged.Messages.get_recent_messages(limit)
+Imessaged.Messages.get_messages_since(last_rowid, limit: 100)  # For polling
 ```
 
 ## Installation

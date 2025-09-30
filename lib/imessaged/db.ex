@@ -29,12 +29,7 @@ defmodule Imessaged.DB do
   # Private helpers
 
   defp bind_params(_conn, statement, params) do
-    Enum.reduce_while(params, :ok, fn param, :ok ->
-      case Sqlite3.bind(statement, [param]) do
-        :ok -> {:cont, :ok}
-        error -> {:halt, error}
-      end
-    end)
+    Sqlite3.bind(statement, params)
   end
 
   defp fetch_all(conn, statement) do

@@ -113,6 +113,32 @@ defmodule Imessaged.Messages do
     end
   end
 
+  @doc """
+  Get messages since a specific ROWID (for polling new messages).
+  Returns messages in ascending order by ROWID.
+  """
+  def get_messages_since(last_rowid, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 1000)
+
+    query = """
+    SELECT #{@message_fields}
+    FROM message m
+    LEFT JOIN handle h ON h.ROWID = m.handle_id
+    LEFT JOIN chat_message_join c ON m.ROWID = c.message_id
+    WHERE m.ROWID > ?1
+      AND (m.text IS NOT NULL OR m.attributedBody IS NOT NULL OR m.cache_has_attachments = 1)
+      AND m.is_from_me IS NOT NULL
+    ORDER BY m.ROWID ASC
+    LIMIT ?2
+    """
+
+    with {:ok, conn} <- DB.connect(),
+         {:ok, rows} <- DB.query(conn, query, [last_rowid, limit]) do
+      messages = Enum.map(rows, &parse_message_row/1)
+      {:ok, messages}
+    end
+  end
+
   # Private helpers
 
   defp parse_message_row(row) do

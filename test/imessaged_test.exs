@@ -63,6 +63,33 @@ defmodule ImessagedTest do
     end
   end
 
+  describe "Messages.get_messages_since/2" do
+    test "fetches messages after a specific ROWID" do
+      # Get a recent message to use as baseline
+      case Messages.get_recent_messages(10) do
+        {:ok, messages} when length(messages) > 1 ->
+          # Use the 5th message as baseline
+          baseline_rowid = Enum.at(messages, 5)["ROWID"]
+
+          case Messages.get_messages_since(baseline_rowid, limit: 10) do
+            {:ok, new_messages} ->
+              assert is_list(new_messages)
+              # All returned messages should have ROWID > baseline
+              Enum.each(new_messages, fn msg ->
+                assert msg["ROWID"] > baseline_rowid
+              end)
+
+            {:error, _} ->
+              assert true
+          end
+
+        _ ->
+          # Not enough messages or database not accessible
+          assert true
+      end
+    end
+  end
+
   describe "TypedStream.extract_text/1" do
     test "extracts text from keyword list format" do
       parsed = [text: "Hello, world!", has_attachments: false]

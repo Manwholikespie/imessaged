@@ -68,6 +68,22 @@ defmodule Imessaged.Router do
   end
 
   # Messages
+  get "/v1/messages" do
+    case conn.query_params do
+      %{"since_id" => since_id} ->
+        last_rowid = String.to_integer(since_id)
+        limit = Map.get(conn.query_params, "limit", "1000") |> String.to_integer()
+
+        case Messages.get_messages_since(last_rowid, limit: limit) do
+          {:ok, messages} -> send_json(conn, 200, %{data: messages})
+          {:error, reason} -> send_json(conn, 500, %{error: reason})
+        end
+
+      _ ->
+        send_json(conn, 400, %{error: "Missing required parameter: since_id"})
+    end
+  end
+
   get "/v1/messages/:id" do
     message_id = String.to_integer(id)
 
