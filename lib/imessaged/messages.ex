@@ -41,8 +41,19 @@ defmodule Imessaged.Messages do
   m.group_title,
   m.group_action_type,
   c.chat_id,
+  ch.chat_identifier,
+  CASE WHEN ch.style = 45 THEN 1 ELSE 0 END as is_direct,
   (SELECT COUNT(*) FROM message_attachment_join a WHERE m.ROWID = a.message_id) as num_attachments,
-  (SELECT COUNT(*) FROM message m2 WHERE m2.thread_originator_guid = m.guid) as num_replies
+  (SELECT COUNT(*) FROM message m2 WHERE m2.thread_originator_guid = m.guid) as num_replies,
+  (SELECT json_group_array(json_object(
+    'attachment_id', a.ROWID,
+    'filename', a.filename,
+    'mime_type', a.mime_type,
+    'total_bytes', a.total_bytes,
+    'transfer_name', a.transfer_name
+  )) FROM attachment a
+  INNER JOIN message_attachment_join maj ON a.ROWID = maj.attachment_id
+  WHERE maj.message_id = m.ROWID) as attachments
   """
 
   @doc """
@@ -56,6 +67,7 @@ defmodule Imessaged.Messages do
     FROM message m
     LEFT JOIN handle h ON h.ROWID = m.handle_id
     LEFT JOIN chat_message_join c ON m.ROWID = c.message_id
+    LEFT JOIN chat ch ON ch.ROWID = c.chat_id
     WHERE c.chat_id = ?1
       AND (m.text IS NOT NULL OR m.attributedBody IS NOT NULL OR m.cache_has_attachments = 1)
       AND m.is_from_me IS NOT NULL
@@ -79,6 +91,7 @@ defmodule Imessaged.Messages do
     FROM message m
     LEFT JOIN handle h ON h.ROWID = m.handle_id
     LEFT JOIN chat_message_join c ON m.ROWID = c.message_id
+    LEFT JOIN chat ch ON ch.ROWID = c.chat_id
     WHERE m.ROWID = ?1
     """
 
@@ -100,6 +113,7 @@ defmodule Imessaged.Messages do
     FROM message m
     LEFT JOIN handle h ON h.ROWID = m.handle_id
     LEFT JOIN chat_message_join c ON m.ROWID = c.message_id
+    LEFT JOIN chat ch ON ch.ROWID = c.chat_id
     WHERE (m.text IS NOT NULL OR m.attributedBody IS NOT NULL OR m.cache_has_attachments = 1)
       AND m.is_from_me IS NOT NULL
     ORDER BY m.date DESC
@@ -125,6 +139,7 @@ defmodule Imessaged.Messages do
     FROM message m
     LEFT JOIN handle h ON h.ROWID = m.handle_id
     LEFT JOIN chat_message_join c ON m.ROWID = c.message_id
+    LEFT JOIN chat ch ON ch.ROWID = c.chat_id
     WHERE m.ROWID > ?1
       AND (m.text IS NOT NULL OR m.attributedBody IS NOT NULL OR m.cache_has_attachments = 1)
       AND m.is_from_me IS NOT NULL
@@ -168,8 +183,11 @@ defmodule Imessaged.Messages do
       group_title,
       group_action_type,
       chat_id,
+      chat_identifier,
+      is_direct,
       num_attachments,
-      num_replies
+      num_replies,
+      attachments_json
     ] = row
 
     parsed_content =
@@ -184,6 +202,18 @@ defmodule Imessaged.Messages do
         end
       else
         content
+      end
+
+    # Parse attachments JSON string into Elixir list
+    attachments =
+      case attachments_json do
+        nil -> []
+        json_string when is_binary(json_string) ->
+          case Jason.decode(json_string) do
+            {:ok, list} -> list
+            {:error, _} -> []
+          end
+        _ -> []
       end
 
     %{
@@ -215,7 +245,10 @@ defmodule Imessaged.Messages do
       "is_edited" => date_edited != 0 && date_edited != nil,
       "group_title" => group_title,
       "group_action_type" => group_action_type,
-      "chat_id" => chat_id
+      "chat_id" => chat_id,
+      "chat_identifier" => chat_identifier,
+      "is_direct" => is_direct == 1,
+      "attachments" => attachments
     }
   end
 end

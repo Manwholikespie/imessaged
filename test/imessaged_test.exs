@@ -18,6 +18,11 @@ defmodule ImessagedTest do
             assert Map.has_key?(message, "ROWID")
             assert Map.has_key?(message, "content")
             assert Map.has_key?(message, "date")
+            assert Map.has_key?(message, "chat_identifier")
+            assert Map.has_key?(message, "is_direct")
+            assert Map.has_key?(message, "attachments")
+            assert is_boolean(message["is_direct"])
+            assert is_list(message["attachments"])
           end
 
         {:error, _reason} ->
@@ -39,6 +44,11 @@ defmodule ImessagedTest do
               assert is_map(fetched)
               assert fetched["ROWID"] == rowid
               assert Map.has_key?(fetched, "content")
+              assert Map.has_key?(fetched, "chat_identifier")
+              assert Map.has_key?(fetched, "is_direct")
+              assert Map.has_key?(fetched, "attachments")
+              assert is_boolean(fetched["is_direct"])
+              assert is_list(fetched["attachments"])
 
             {:error, _} ->
               assert true
@@ -77,6 +87,11 @@ defmodule ImessagedTest do
               # All returned messages should have ROWID > baseline
               Enum.each(new_messages, fn msg ->
                 assert msg["ROWID"] > baseline_rowid
+                assert Map.has_key?(msg, "chat_identifier")
+                assert Map.has_key?(msg, "is_direct")
+                assert Map.has_key?(msg, "attachments")
+                assert is_boolean(msg["is_direct"])
+                assert is_list(msg["attachments"])
               end)
 
             {:error, _} ->
