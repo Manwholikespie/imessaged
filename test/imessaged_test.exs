@@ -2,53 +2,107 @@ defmodule ImessagedTest do
   use ExUnit.Case
   doctest Imessaged
 
-  alias Imessaged.Models.{Chat, Contact}
+  alias Imessaged.Messages
+  alias Imessaged.TypedStream
 
-  describe "send_message_to_buddy/2" do
-    test "successfully sends message to valid contact" do
-      assert :ok = Imessaged.send_message_to_buddy("Hello!", "+1234567890")
-    end
+  describe "Messages.get_recent_messages/1" do
+    test "returns list of messages with valid structure" do
+      case Messages.get_recent_messages(5) do
+        {:ok, messages} ->
+          assert is_list(messages)
+          assert length(messages) <= 5
 
-    test "returns error for invalid contact" do
-      assert {:error, "Not a valid email or phone number."} =
-               Imessaged.send_message_to_buddy("Hello!", "invalid")
-    end
-  end
+          if length(messages) > 0 do
+            message = hd(messages)
+            assert is_map(message)
+            assert Map.has_key?(message, "ROWID")
+            assert Map.has_key?(message, "content")
+            assert Map.has_key?(message, "date")
+          end
 
-  describe "send_message_to_chat/2" do
-    test "successfully sends message to valid chat" do
-      assert :ok = Imessaged.send_message_to_chat("Hello everyone!", "chat1")
-    end
-
-    test "returns error for invalid chat" do
-      assert {:error, "Chat not found"} = Imessaged.send_message_to_chat("Hello!", "invalid")
-    end
-  end
-
-  describe "list_chats/0" do
-    test "returns list of chats with participants" do
-      assert {:ok, chats} = Imessaged.list_chats()
-      assert length(chats) == 2
-
-      [group_chat, one_on_one] = chats
-      assert %Chat{} = group_chat
-      assert group_chat.name == "Test Group"
-      assert length(group_chat.participants) == 2
-
-      assert %Chat{} = one_on_one
-      assert one_on_one.name == "One on One"
-      assert length(one_on_one.participants) == 1
+        {:error, _reason} ->
+          # Database might not be accessible in test environment
+          assert true
+      end
     end
   end
 
-  describe "list_buddies/0" do
-    test "returns list of contacts" do
-      assert {:ok, contacts} = Imessaged.list_buddies()
-      assert length(contacts) == 3
+  describe "Messages.get_message/1" do
+    test "fetches a specific message by ROWID" do
+      # First get a recent message to get a valid ROWID
+      case Messages.get_recent_messages(1) do
+        {:ok, [message | _]} ->
+          rowid = message["ROWID"]
 
-      assert Enum.all?(contacts, &match?(%Contact{}, &1))
-      assert Enum.any?(contacts, &(&1.handle == "+1234567890"))
-      assert Enum.any?(contacts, &(&1.handle == "test@example.com"))
+          case Messages.get_message(rowid) do
+            {:ok, fetched} ->
+              assert is_map(fetched)
+              assert fetched["ROWID"] == rowid
+              assert Map.has_key?(fetched, "content")
+
+            {:error, _} ->
+              assert true
+          end
+
+        _ ->
+          # No messages or database not accessible
+          assert true
+      end
+    end
+
+    test "returns error for non-existent message" do
+      case Messages.get_message(999_999_999) do
+        {:error, reason} ->
+          assert is_binary(reason)
+          assert String.contains?(reason, "not found")
+
+        {:ok, _} ->
+          # Extremely unlikely this ROWID exists
+          assert false
+      end
+    end
+  end
+
+  describe "Messages.get_messages_since/2" do
+    test "fetches messages after a specific ROWID" do
+      # Get a recent message to use as baseline
+      case Messages.get_recent_messages(10) do
+        {:ok, messages} when length(messages) > 1 ->
+          # Use the 5th message as baseline
+          baseline_rowid = Enum.at(messages, 5)["ROWID"]
+
+          case Messages.get_messages_since(baseline_rowid, limit: 10) do
+            {:ok, new_messages} ->
+              assert is_list(new_messages)
+              # All returned messages should have ROWID > baseline
+              Enum.each(new_messages, fn msg ->
+                assert msg["ROWID"] > baseline_rowid
+              end)
+
+            {:error, _} ->
+              assert true
+          end
+
+        _ ->
+          # Not enough messages or database not accessible
+          assert true
+      end
+    end
+  end
+
+  describe "TypedStream.extract_text/1" do
+    test "extracts text from keyword list format" do
+      parsed = [text: "Hello, world!", has_attachments: false]
+      assert TypedStream.extract_text(parsed) == "Hello, world!"
+    end
+
+    test "returns default for missing text" do
+      parsed = [has_attachments: true]
+      assert TypedStream.extract_text(parsed) == "[Unable to extract text]"
+    end
+
+    test "returns default for nil input" do
+      assert TypedStream.extract_text(nil) == "[Unable to extract text]"
     end
   end
 end

@@ -11,63 +11,107 @@ defmodule Imessaged.Router do
 
   plug(:dispatch)
 
-  # Send message to a buddy (phone/email)
-  post "/api/message/buddy" do
-    with {:ok, %{"message" => message, "handle" => handle}} <-
-           validate_message_params(conn.body_params),
-         :ok <- Imessaged.send_message_to_buddy(message, handle) do
-      send_json(conn, 200, %{status: "ok"})
-    else
-      {:error, reason} -> send_json(conn, 400, %{error: reason})
-    end
-  end
+  alias Imessaged.Messages
 
-  # Send message to a chat
-  post "/api/message/chat" do
-    with {:ok, %{"message" => message, "chat_id" => chat_id}} <-
-           validate_message_params(conn.body_params),
-         :ok <- Imessaged.send_message_to_chat(message, chat_id) do
-      send_json(conn, 200, %{status: "ok"})
-    else
-      {:error, reason} -> send_json(conn, 400, %{error: reason})
-    end
-  end
+  # V1 API - Resource-oriented design
 
-  # List all chats
-  get "/api/chats" do
+  # Chats
+  get "/v1/chats" do
     case Imessaged.list_chats() do
-      {:ok, chats} -> send_json(conn, 200, %{chats: chats})
+      {:ok, chats} -> send_json(conn, 200, %{data: chats})
       {:error, reason} -> send_json(conn, 500, %{error: reason})
     end
   end
 
-  # List all buddies
-  get "/api/buddies" do
+  get "/v1/chats/:id/messages" do
+    limit = conn.params["limit"] || conn.query_params["limit"] || "10"
+    limit = String.to_integer(limit)
+
+    case Messages.get_messages(id, limit: limit) do
+      {:ok, messages} -> send_json(conn, 200, %{data: messages})
+      {:error, reason} -> send_json(conn, 500, %{error: reason})
+    end
+  end
+
+  post "/v1/chats/:id/messages" do
+    case Map.fetch(conn.body_params, "message") do
+      {:ok, message} when is_binary(message) ->
+        case Imessaged.send_message_to_chat(message, id) do
+          :ok -> send_json(conn, 200, %{status: "ok"})
+          {:error, reason} -> send_json(conn, 400, %{error: reason})
+        end
+
+      _ ->
+        send_json(conn, 400, %{error: "Invalid or missing message parameter"})
+    end
+  end
+
+  # Buddies
+  get "/v1/buddies" do
     case Imessaged.list_buddies() do
-      {:ok, buddies} -> send_json(conn, 200, %{buddies: buddies})
+      {:ok, buddies} -> send_json(conn, 200, %{data: buddies})
       {:error, reason} -> send_json(conn, 500, %{error: reason})
     end
   end
 
-  # Send file to buddy
-  post "/api/file/buddy" do
-    with {:ok, %{"file_path" => file_path, "handle" => handle}} <-
-           validate_file_params(conn.body_params),
-         :ok <- Imessaged.send_file_to_buddy(file_path, handle) do
-      send_json(conn, 200, %{status: "ok"})
-    else
-      {:error, reason} -> send_json(conn, 400, %{error: reason})
+  post "/v1/buddies/:handle/messages" do
+    case Map.fetch(conn.body_params, "message") do
+      {:ok, message} when is_binary(message) ->
+        case Imessaged.send_message_to_buddy(message, handle) do
+          :ok -> send_json(conn, 200, %{status: "ok"})
+          {:error, reason} -> send_json(conn, 400, %{error: reason})
+        end
+
+      _ ->
+        send_json(conn, 400, %{error: "Invalid or missing message parameter"})
     end
   end
 
-  # Send file to chat
-  post "/api/file/chat" do
-    with {:ok, %{"file_path" => file_path, "chat_id" => chat_id}} <-
-           validate_file_params(conn.body_params),
-         :ok <- Imessaged.send_file_to_chat(file_path, chat_id) do
-      send_json(conn, 200, %{status: "ok"})
+  # Messages
+  get "/v1/messages" do
+    case conn.query_params do
+      %{"since_id" => since_id} ->
+        last_rowid = String.to_integer(since_id)
+        limit = Map.get(conn.query_params, "limit", "1000") |> String.to_integer()
+
+        case Messages.get_messages_since(last_rowid, limit: limit) do
+          {:ok, messages} -> send_json(conn, 200, %{data: messages})
+          {:error, reason} -> send_json(conn, 500, %{error: reason})
+        end
+
+      _ ->
+        send_json(conn, 400, %{error: "Missing required parameter: since_id"})
+    end
+  end
+
+  get "/v1/messages/:id" do
+    message_id = String.to_integer(id)
+
+    case Messages.get_message(message_id) do
+      {:ok, message} -> send_json(conn, 200, %{data: message})
+      {:error, reason} -> send_json(conn, 404, %{error: reason})
+    end
+  end
+
+  # Attachments
+  post "/v1/attachments" do
+    with {:ok, file_path} <- Map.fetch(conn.body_params, "file_path"),
+         {:ok, target} <- get_attachment_target(conn.body_params) do
+      case target do
+        {:buddy, handle} ->
+          case Imessaged.send_file_to_buddy(file_path, handle) do
+            :ok -> send_json(conn, 200, %{status: "ok"})
+            {:error, reason} -> send_json(conn, 400, %{error: reason})
+          end
+
+        {:chat, chat_id} ->
+          case Imessaged.send_file_to_chat(file_path, chat_id) do
+            :ok -> send_json(conn, 200, %{status: "ok"})
+            {:error, reason} -> send_json(conn, 400, %{error: reason})
+          end
+      end
     else
-      {:error, reason} -> send_json(conn, 400, %{error: reason})
+      :error -> send_json(conn, 400, %{error: "Missing required parameters"})
     end
   end
 
@@ -82,33 +126,11 @@ defmodule Imessaged.Router do
     |> send_resp(status, Jason.encode!(body))
   end
 
-  defp validate_message_params(%{"message" => message} = params) when is_binary(message) do
+  defp get_attachment_target(params) do
     cond do
-      Map.has_key?(params, "handle") ->
-        {:ok, %{"message" => message, "handle" => params["handle"]}}
-
-      Map.has_key?(params, "chat_id") ->
-        {:ok, %{"message" => message, "chat_id" => params["chat_id"]}}
-
-      true ->
-        {:error, "Missing handle or chat_id parameter"}
+      Map.has_key?(params, "handle") -> {:ok, {:buddy, params["handle"]}}
+      Map.has_key?(params, "chat_id") -> {:ok, {:chat, params["chat_id"]}}
+      true -> :error
     end
   end
-
-  defp validate_message_params(_), do: {:error, "Invalid or missing message parameter"}
-
-  defp validate_file_params(%{"file_path" => path} = params) when is_binary(path) do
-    cond do
-      Map.has_key?(params, "handle") ->
-        {:ok, %{"file_path" => path, "handle" => params["handle"]}}
-
-      Map.has_key?(params, "chat_id") ->
-        {:ok, %{"file_path" => path, "chat_id" => params["chat_id"]}}
-
-      true ->
-        {:error, "Missing handle or chat_id parameter"}
-    end
-  end
-
-  defp validate_file_params(_), do: {:error, "Invalid or missing file_path parameter"}
 end
