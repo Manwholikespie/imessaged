@@ -1,72 +1,75 @@
 # imessaged
 
-This project provides a lightweight server for programmatically interacting with Messages.app on macOS. It allows you to send iMessages and respond to received messages through either a REST API or as a dependency for your Elixir application. The functionality was originally part of my multi-platform bot [Sue](https://github.com/Manwholikespie/Sue), but has been extracted into a standalone program for broader use.
+This project provides a lightweight server for programmatically interacting with Messages.app on macOS. It allows you to send iMessages, read message history, and respond to received messages through either a REST API or as a dependency for your Elixir application. The functionality was originally part of my multi-platform bot [Sue](https://github.com/Manwholikespie/Sue), but has been extracted into a standalone program for broader use.
 
 ## How does it work?
 
-Messages.app exposes a Scripting Definition File (sdef). Using Apple's sdp tool, we can generate a header file. Our Objective-C code leverages this interface and loads into Elixir as a NIF.
+- **Sending messages**: Uses Messages.app ScriptingBridge via Objective-C NIF
+- **Reading messages**: Queries the SQLite database (`~/Library/Messages/chat.db`) with typedstream parsing for rich content
 
 ## REST API
 
-**Send Message to Buddy**
+**Get Messages from Chat**
 ```bash
-curl -X POST http://localhost:4000/api/message/buddy \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": "Hello from API!", 
-    "handle": "+1234567890"
-  }'
+curl "http://localhost:4000/v1/chats/iMessage;-;chat123/messages?limit=20"
+```
+
+**Get Specific Message**
+```bash
+curl http://localhost:4000/v1/messages/12345
 ```
 
 **Send Message to Chat**
 ```bash
-curl -X POST http://localhost:4000/api/message/chat \
+curl -X POST http://localhost:4000/v1/chats/iMessage;-;chat123/messages \
   -H "Content-Type: application/json" \
-  -d '{
-    "message": "Hello group!", 
-    "chat_id": "iMessage;-;chat123"
-  }'
+  -d '{"message": "Hello group!"}'
+```
+
+**Send Message to Buddy**
+```bash
+curl -X POST http://localhost:4000/v1/buddies/+1234567890/messages \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!"}'
 ```
 
 **List All Chats**
 ```bash
-curl http://localhost:4000/api/chats
+curl http://localhost:4000/v1/chats
 ```
 
 **List All Buddies**
 ```bash
-curl http://localhost:4000/api/buddies
+curl http://localhost:4000/v1/buddies
 ```
 
-**Send File to Buddy**
+**Send Attachment**
 ```bash
-curl -X POST http://localhost:4000/api/file/buddy \
+curl -X POST http://localhost:4000/v1/attachments \
   -H "Content-Type: application/json" \
   -d '{
-    "file_path": "/Users/myself/Pictures/image.jpg", 
-    "handle": "friend@example.com"
-  }'
-```
-
-**Send File to Chat**
-```bash
-curl -X POST http://localhost:4000/api/file/chat \
-  -H "Content-Type: application/json" \
-  -d '{
-    "file_path": "/Users/myself/Pictures/image.jpg", 
+    "file_path": "/Users/myself/Pictures/image.jpg",
     "chat_id": "iMessage;-;chat123"
   }'
 ```
 
 ## Elixir API
 
-```
-Imessaged.send_message_to_buddy(messageBody, phone_or_email)
-Imessaged.send_message_to_chat(messageBody, internal_chat_id)
-Imessaged.send_file_to_buddy(filePath, phone_or_email)
-Imessaged.send_file_to_chat(filePath, internal_chat_id)
+**Writing (Sending)**
+```elixir
+Imessaged.send_message_to_buddy(message, phone_or_email)
+Imessaged.send_message_to_chat(message, chat_id)
+Imessaged.send_file_to_buddy(file_path, phone_or_email)
+Imessaged.send_file_to_chat(file_path, chat_id)
 Imessaged.list_chats()
 Imessaged.list_buddies()
+```
+
+**Reading**
+```elixir
+Imessaged.Messages.get_messages(chat_id, limit: 20)
+Imessaged.Messages.get_message(message_id)
+Imessaged.Messages.get_recent_messages(limit)
 ```
 
 ## Installation
@@ -112,8 +115,8 @@ The program creates and manages the following directory structure:
 
 - [X] Send messages to individuals and groups
 - [X] Send files to individuals and groups
-- [X] Redo deleted REST API
-- [ ] Figure out cleaner way to read messages. Sqlite may still be only option. Unless... ;)
+- [X] REST API for sending and reading
+- [X] Read messages from SQLite database
 - [ ] Easy install
 - [ ] Better logs
 - [ ] Rate limiting

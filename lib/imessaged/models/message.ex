@@ -1,32 +1,8 @@
 defmodule Imessaged.Models.Message do
   @moduledoc """
-  Represents an iMessage message.
+  Represents an iMessage message using a dynamic map structure.
+  Fields may vary across macOS versions.
   """
 
-  defstruct [
-    # ROWID from SQLite
-    :id,
-    # Unique message identifier
-    :guid,
-    # Message content
-    :text,
-    # Timestamp of message
-    :date,
-    # Timestamp of edit if edited
-    :date_edited,
-    # Boolean indicating if sent by user
-    :is_from_me,
-    # iMessage/SMS
-    :service
-  ]
-
-  @type t :: %__MODULE__{
-          id: integer(),
-          guid: String.t(),
-          text: String.t(),
-          date: integer(),
-          date_edited: integer() | nil,
-          is_from_me: boolean(),
-          service: String.t()
-        }
+  @type t :: map()
 end

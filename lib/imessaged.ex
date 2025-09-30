@@ -4,9 +4,8 @@ defmodule Imessaged do
   """
 
   alias Imessaged.Models.{Chat, Contact}
+  alias Imessaged.Native
   import Imessaged.Utils
-
-  @backend Application.compile_env(:imessaged, :backend, Imessaged.Backend.Native)
 
   @doc """
   Sends a message to an individual person by their phone number or email.
@@ -15,7 +14,7 @@ defmodule Imessaged do
   @spec send_message_to_buddy(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
   def send_message_to_buddy(message, handle) when is_binary(message) and is_binary(handle) do
     if is_email?(handle) or is_phone_number?(handle) do
-      @backend.send_message_to_buddy(message, handle)
+      Native.send_message_to_buddy(message, handle)
     else
       {:error, "Not a valid email or phone number."}
     end
@@ -26,7 +25,7 @@ defmodule Imessaged do
   """
   @spec send_message_to_chat(bitstring(), bitstring()) :: :ok | {:error, bitstring()}
   def send_message_to_chat(message, chat_id) when is_binary(message) and is_binary(chat_id) do
-    @backend.send_message_to_chat(message, chat_id)
+    Native.send_message_to_chat(message, chat_id)
   end
 
   @doc """
@@ -34,7 +33,13 @@ defmodule Imessaged do
   """
   @spec list_chats() :: {:ok, [Chat.t()]} | {:error, bitstring()}
   def list_chats do
-    @backend.list_chats()
+    case Native.list_chats() do
+      {:ok, chats} ->
+        {:ok, Enum.map(chats, &to_chat_struct/1)}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   @doc """
@@ -42,7 +47,13 @@ defmodule Imessaged do
   """
   @spec list_buddies() :: {:ok, [Contact.t()]} | {:error, bitstring()}
   def list_buddies do
-    @backend.list_buddies()
+    case Native.list_buddies() do
+      {:ok, buddies} ->
+        {:ok, Enum.map(buddies, &to_contact_struct/1)}
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   @doc """
@@ -59,7 +70,7 @@ defmodule Imessaged do
     if is_email?(handle) or is_phone_number?(handle) do
       case Imessaged.FileManager.prepare_file(file_path) do
         {:ok, prepared_path} ->
-          @backend.send_file_to_buddy(prepared_path, handle)
+          Native.send_file_to_buddy(prepared_path, handle)
 
         {:error, _} = error ->
           error
@@ -81,10 +92,26 @@ defmodule Imessaged do
   def send_file_to_chat(file_path, chat_id) when is_binary(file_path) and is_binary(chat_id) do
     case Imessaged.FileManager.prepare_file(file_path) do
       {:ok, prepared_path} ->
-        @backend.send_file_to_chat(prepared_path, chat_id)
+        Native.send_file_to_chat(prepared_path, chat_id)
 
       {:error, _} = error ->
         error
     end
+  end
+
+  # Private helpers
+
+  defp to_chat_struct(chat) do
+    Chat.new(
+      id: chat.id,
+      name: chat.name,
+      participants: Enum.map(chat.participants, &Contact.new(handle: &1))
+    )
+  end
+
+  defp to_contact_struct(buddy) do
+    %Contact{
+      handle: buddy.handle
+    }
   end
 end
