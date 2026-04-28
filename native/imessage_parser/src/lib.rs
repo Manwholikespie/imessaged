@@ -125,4 +125,4 @@ fn parse_typedstream<'a>(env: Env<'a>, data: Binary) -> NifResult<Term<'a>> {
     }
 }
 
-rustler::init!("Elixir.Imessaged.TypedStream", [parse_typedstream]);
+rustler::init!("Elixir.Imessaged.TypedStream");

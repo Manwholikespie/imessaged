@@ -207,13 +207,17 @@ defmodule Imessaged.Messages do
     # Parse attachments JSON string into Elixir list
     attachments =
       case attachments_json do
-        nil -> []
+        nil ->
+          []
+
         json_string when is_binary(json_string) ->
           case Jason.decode(json_string) do
             {:ok, list} -> list
             {:error, _} -> []
           end
-        _ -> []
+
+        _ ->
+          []
       end
 
     %{

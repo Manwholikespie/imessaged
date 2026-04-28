@@ -28,11 +28,11 @@ defmodule Imessaged.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.8"},
+      {:elixir_make, "~> 0.8", runtime: false},
       {:plug_cowboy, "~> 2.7"},
       {:jason, "~> 1.4"},
       {:exqlite, "~> 0.27"},
-      {:rustler, "~> 0.29.0"}
+      {:rustler, "~> 0.37", runtime: false}
     ]
   end
 
